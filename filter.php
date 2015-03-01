@@ -12,13 +12,15 @@ class filter_quiz_chart extends moodle_text_filter {
         static $jsinitialised = false;
         
         if ($jsinitialised) {
-            return;
+            return true;
         }
         
         $url = new moodle_url('/lib/yuilib/3.13.0/charts-base/charts-base.js');
         $page->requires->js($url);
         
         $jsinitialised = true;
+        
+        return true;
     }
     
     public function filter($text, array $options = array()) {
@@ -143,7 +145,7 @@ $html =<<< __HTML__
                             fill: {
                                 color:  colors{$quiz_cmid}
                             },
-                            width: 20
+                            width: 25
                         }
                     }
                 }
@@ -191,7 +193,7 @@ function quiz_report_grade_bands_and_time($bandwidth, $bands, $quizid, $userids 
         FROM (
             SELECT FLOOR(qg.grade / :bandwidth) AS band, qg.userid
             FROM {quiz_grades} qg
-            WHERE $usql qg.quiz = :quizid
+            WHERE {$usql} qg.quiz = :quizid
         ) subquery
         GROUP BY band
         ORDER BY band
