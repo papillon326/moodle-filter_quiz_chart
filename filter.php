@@ -25,16 +25,20 @@ class filter_quiz_chart extends moodle_text_filter {
     
     public function filter($text, array $options = array()) {
         global $CFG, $DB, $COURSE, $USER;
+        $counter = 0;
         
+        // shortcut
         if (strpos($text, '[quizchart:') === false){
             return $text;
         }
         //echo '<pre>'; var_dump($text); echo '</pre>';
         
+        // get placeholders
         if (preg_match_all('/\[quizchart:([0-9]+)\]/', $text, $matches, PREG_SET_ORDER) === false) return $text;
         //echo '<pre>'; var_dump($matches); echo '</pre>';
-        
+
         foreach ($matches as $match) {
+            $counter++;
             list($link_text, $quiz_cmid) = $match;
             
             $cm = get_coursemodule_from_id('quiz', $quiz_cmid, $COURSE->id);
@@ -101,14 +105,15 @@ class filter_quiz_chart extends moodle_text_filter {
             $lang->grade = get_string('grade');
             
 $html =<<< __HTML__
-<div id="score-chart-{$quiz_cmid}" style="min-width:500px;width:100%;height:400px;"></div>
+<div name="quizchart_title" style="text-align:center;">{$quiz->name}</div>
+<div id="quizchart-{$quiz_cmid}-{$counter}" style="min-width:500px;width:100%;height:400px;"></div>
 <script type="text/javascript">
     var chartData{$quiz_cmid} = {$chart_data};
     var colors{$quiz_cmid} = {$colors};
     YUI().use('charts', function (Y) {
         var myChart = new Y.Chart({
             dataProvider: chartData{$quiz_cmid},
-            render: "#score-chart-{$quiz_cmid}",
+            render: "#quizchart-{$quiz_cmid}-{$counter}",
             categoryKey: 'bandlabel',
             horizontalGridlines: {
                 styles: {
