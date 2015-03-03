@@ -91,6 +91,7 @@ class filter_quiz_chart extends moodle_text_filter {
                 $participant_max = max($participant_max, $participant[$i]['participant']);
             }
             
+            // set band color
             $colors = array_fill(0, count($bandlabels), '#FF0000');
             if ($mygrade !== false) {
               $colors[$mygrade] = '#FF00FF';
@@ -104,8 +105,10 @@ class filter_quiz_chart extends moodle_text_filter {
             $lang->participants = get_string('participants');
             $lang->grade = get_string('grade');
             
+            $quiz_uri = new moodle_url('/mod/quiz/view.php?id=' . $quiz_cmid);
+            
 $html =<<< __HTML__
-<div name="quizchart_title" style="text-align:center;">{$quiz->name}</div>
+<div name="quizchart_title" style="text-align:center;"><a href="{$quiz_uri}">{$quiz->name}</a></div>
 <div id="quizchart-{$quiz_cmid}-{$counter}" style="min-width:500px;width:100%;height:400px;"></div>
 <script type="text/javascript">
     var chartData{$quiz_cmid} = {$chart_data};
@@ -118,7 +121,7 @@ $html =<<< __HTML__
             horizontalGridlines: {
                 styles: {
                     line: {
-                        color: "#dad8c9",
+                        color: '#dad8c9',
                     }
                 }
             },
