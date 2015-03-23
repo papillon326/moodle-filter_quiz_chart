@@ -8,21 +8,6 @@ require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 require_once($CFG->dirroot . '/mod/quiz/report/reportlib.php');
 
 class filter_quiz_chart extends moodle_text_filter {
-    public function setup($page, $context) {
-        static $jsinitialised = false;
-        
-        if ($jsinitialised) {
-            return true;
-        }
-        
-        $url = new moodle_url('/lib/yuilib/3.13.0/charts-base/charts-base.js');
-        $page->requires->js($url);
-        
-        $jsinitialised = true;
-        
-        return true;
-    }
-    
     public function filter($text, array $options = array()) {
         global $CFG, $DB, $COURSE, $USER;
         $counter = 0;
