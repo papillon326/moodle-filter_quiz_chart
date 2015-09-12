@@ -16,7 +16,6 @@ class filter_quiz_chart extends moodle_text_filter {
         if (strpos($text, '[quizchart:') === false){
             return $text;
         }
-        //echo '<pre>'; var_dump($text); echo '</pre>';
         
         // get placeholders
         if (preg_match_all('/\[quizchart:([0-9]+)\]/', $text, $matches, PREG_SET_ORDER) === false) return $text;
@@ -31,7 +30,6 @@ class filter_quiz_chart extends moodle_text_filter {
             
             $quiz = $DB->get_record('quiz', array('id' => $cm->instance));
             if(!$quiz) continue;
-            //echo '<pre>'; var_dump($match); var_dump($quiz); echo '</pre>';
             
             // Pick a sensible number of bands depending on quiz maximum grade.
             $bands = $quiz->grade;
@@ -47,7 +45,6 @@ class filter_quiz_chart extends moodle_text_filter {
                     $bands *= 2;
                 }
             }
-            //echo '<pre>'; var_dump($bands); echo '</pre>';
             
             // See MDL-34589. Using doubles as array keys causes problems in PHP 5.4,
             // hence the explicit cast to int.
@@ -58,11 +55,10 @@ class filter_quiz_chart extends moodle_text_filter {
                 $bandlabels[] = quiz_format_grade($quiz, ($i - 1) * $bandwidth) . ' - ' .
                         quiz_format_grade($quiz, $i * $bandwidth);
             }
-            //echo '<pre>'; var_dump($bandlabels); echo '</pre>';
             
-            $participant = quiz_report_grade_bands_and_time($bandwidth, $bands, $quiz->id);
-            //echo '<pre>'; var_dump($participant); echo '</pre>';
+            $participant = quiz_report_grade_bands($bandwidth, $bands, $quiz->id);
             
+            // find my position in grade band
             $mygrade = quiz_report_grade_bands($bandwidth, $bands, $quiz->id, array($USER->id));
             $mygrade = array_search('1', $mygrade);
             
@@ -84,7 +80,7 @@ class filter_quiz_chart extends moodle_text_filter {
             
             $chart_data = json_encode($chart_data);
             $colors = json_encode($colors);
-            $part_max = ceil($participant_max/10)*10;
+            $part_max = ceil($participant_max/10) * 10;
             
             $lang = new stdClass();
             $lang->participants = get_string('participants');
@@ -163,54 +159,4 @@ __HTML__;
         
         return $text;
     }
-}
-
-function quiz_report_grade_bands_and_time($bandwidth, $bands, $quizid, $userids = array()) {
-    global $DB;
-    if (!is_int($bands)) {
-        debugging('$bands passed to quiz_report_grade_bands must be an integer. (' .
-                gettype($bands) . ' passed.)', DEBUG_DEVELOPER);
-        $bands = (int) $bands;
-    }
-
-    if ($userids) {
-        list($usql, $params) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'u');
-        $usql = "qg.userid {$usql} AND";
-    } else {
-        $usql = '';
-        $params = array();
-    }
-
-    $sql = "
-        SELECT band, COUNT(1) AS participant
-        FROM (
-            SELECT FLOOR(qg.grade / :bandwidth) AS band, qg.userid
-            FROM {quiz_grades} qg
-            WHERE {$usql} qg.quiz = :quizid
-        ) subquery
-        GROUP BY band
-        ORDER BY band
-        ";
-
-    $params['quizid'] = $quizid;
-    $params['bandwidth'] = $bandwidth;
-    $data = $DB->get_records_sql($sql, $params);
-    
-    // fix grade 100%
-    $data[$bands - 1]->participant += $data[$bands]->participant;
-    $data[$bands - 1]->avgtime = (int) (
-      (
-        $data[$bands - 1]->participant * $data[$bands - 1]->avgtime + 
-        $data[$bands]->participant     * $data[$bands]->avgtime
-      ) / ($data[$bands - 1]->participant + $data[$bands]->participant)
-    );
-    unset($data[$bands]);
-    
-    // We need to create array elements with values 0 at indexes where there is no element.
-    $frame = array_fill(0, $bands, array('participant'=>0));
-    foreach ($data as $band_data) {
-        $frame[$band_data->band] = array('participant'=>$band_data->participant);
-    }
-    
-    return $frame;
 }
