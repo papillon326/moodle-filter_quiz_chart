@@ -1,0 +1,1 @@
+moodle-filter_quiz_chart for Moodle 3.0
