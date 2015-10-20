@@ -15,8 +15,8 @@ class filter_quiz_chart extends moodle_text_filter {
             return true;
         }
         
-        $url = new moodle_url('/lib/yuilib/3.13.0/charts-base/charts-base.js');
-        $page->requires->js($url);
+        //$url = new moodle_url('/lib/yuilib/3.13.0/charts-base/charts-base.js');
+        //$page->requires->js($url);
         
         $jsinitialised = true;
         
@@ -46,7 +46,6 @@ class filter_quiz_chart extends moodle_text_filter {
             
             $quiz = $DB->get_record('quiz', array('id' => $cm->instance));
             if(!$quiz) continue;
-            //echo '<pre>'; var_dump($match); var_dump($quiz); echo '</pre>';
             
             // Pick a sensible number of bands depending on quiz maximum grade.
             $bands = $quiz->grade;
@@ -62,7 +61,6 @@ class filter_quiz_chart extends moodle_text_filter {
                     $bands *= 2;
                 }
             }
-            //echo '<pre>'; var_dump($bands); echo '</pre>';
             
             // See MDL-34589. Using doubles as array keys causes problems in PHP 5.4,
             // hence the explicit cast to int.
@@ -73,10 +71,8 @@ class filter_quiz_chart extends moodle_text_filter {
                 $bandlabels[] = quiz_format_grade($quiz, ($i - 1) * $bandwidth) . ' - ' .
                         quiz_format_grade($quiz, $i * $bandwidth);
             }
-            //echo '<pre>'; var_dump($bandlabels); echo '</pre>';
             
-            $participant = quiz_report_grade_bands_and_time($bandwidth, $bands, $quiz->id);
-            //echo '<pre>'; var_dump($participant); echo '</pre>';
+            $participant = quiz_report_grade_bands($bandwidth, $bands, $quiz->id);
             
             $mygrade = quiz_report_grade_bands($bandwidth, $bands, $quiz->id, array($USER->id));
             $mygrade = array_search('1', $mygrade);
@@ -86,9 +82,9 @@ class filter_quiz_chart extends moodle_text_filter {
             $participant_max = 0;
             for ($i=0; $i<count($bandlabels); $i++) {
                 $chart_data[$i]['bandlabel']   = $bandlabels[$i];
-                $chart_data[$i]['participant'] = $participant[$i]['participant'];
+                $chart_data[$i]['participant'] = $participant[$i];
                 
-                $participant_max = max($participant_max, $participant[$i]['participant']);
+                $participant_max = max($participant_max, $participant[$i]);
             }
             
             // set band color
@@ -178,49 +174,4 @@ __HTML__;
         
         return $text;
     }
-}
-
-function quiz_report_grade_bands_and_time($bandwidth, $bands, $quizid, $userids = array()) {
-    global $DB;
-    if (!is_int($bands)) {
-        debugging('$bands passed to quiz_report_grade_bands must be an integer. (' .
-                gettype($bands) . ' passed.)', DEBUG_DEVELOPER);
-        $bands = (int) $bands;
-    }
-
-    if ($userids) {
-        list($usql, $params) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'u');
-        $usql = "qg.userid {$usql} AND";
-    } else {
-        $usql = '';
-        $params = array();
-    }
-
-    $sql = "
-        SELECT band, COUNT(1) AS participant
-        FROM (
-            SELECT FLOOR(qg.grade / :bandwidth) AS band, qg.userid
-            FROM {quiz_grades} qg
-            WHERE {$usql} qg.quiz = :quizid
-        ) subquery
-        GROUP BY band
-        ORDER BY band
-        ";
-
-    $params['quizid'] = $quizid;
-    $params['bandwidth'] = $bandwidth;
-    $data = $DB->get_records_sql($sql, $params);   
-
-    // fix grade 100%
-    $data[$bands - 1]->band         = $bands - 1;
-    $data[$bands - 1]->participant += $data[$bands]->participant;
-    unset($data[$bands]);
-        
-    // We need to create array elements with values 0 at indexes where there is no element.
-    $frame = array_fill(0, $bands, array('participant'=>0));
-    foreach ($data as $band_data) {
-        $frame[$band_data->band] = array('participant'=>$band_data->participant);
-    }
-    
-    return $frame;
 }
