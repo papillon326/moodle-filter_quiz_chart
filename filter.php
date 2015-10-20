@@ -15,7 +15,10 @@ class filter_quiz_chart extends moodle_text_filter {
             return true;
         }
         
-        $url = new moodle_url('/lib/yuilib/3.13.0/charts-base/charts-base.js');
+        $url = new moodle_url('/filter/quiz_chart/d3js/d3.min.js');
+        $page->requires->js($url);
+        
+        $url = new moodle_url('/filter/quiz_chart/debug.js');
         $page->requires->js($url);
         
         $jsinitialised = true;
@@ -24,21 +27,19 @@ class filter_quiz_chart extends moodle_text_filter {
     }
     
     public function filter($text, array $options = array()) {
-        global $CFG, $DB, $COURSE, $USER;
+        global $CFG, $DB, $PAGE, $COURSE, $USER;
         $counter = 0;
         
         // shortcut
         if (strpos($text, '[quizchart:') === false){
             return $text;
         }
-        //echo '<pre>'; var_dump($text); echo '</pre>';
         
         // get placeholders
         if (preg_match_all('/\[quizchart:([0-9]+)\]/', $text, $matches, PREG_SET_ORDER) === false) return $text;
-        //echo '<pre>'; var_dump($matches); echo '</pre>';
 
+        $all_chart_data = array();
         foreach ($matches as $match) {
-            $counter++;
             list($link_text, $quiz_cmid) = $match;
             
             $cm = get_coursemodule_from_id('quiz', $quiz_cmid, $COURSE->id);
@@ -46,7 +47,6 @@ class filter_quiz_chart extends moodle_text_filter {
             
             $quiz = $DB->get_record('quiz', array('id' => $cm->instance));
             if(!$quiz) continue;
-            //echo '<pre>'; var_dump($match); var_dump($quiz); echo '</pre>';
             
             // Pick a sensible number of bands depending on quiz maximum grade.
             $bands = $quiz->grade;
@@ -62,7 +62,6 @@ class filter_quiz_chart extends moodle_text_filter {
                     $bands *= 2;
                 }
             }
-            //echo '<pre>'; var_dump($bands); echo '</pre>';
             
             // See MDL-34589. Using doubles as array keys causes problems in PHP 5.4,
             // hence the explicit cast to int.
@@ -73,11 +72,9 @@ class filter_quiz_chart extends moodle_text_filter {
                 $bandlabels[] = quiz_format_grade($quiz, ($i - 1) * $bandwidth) . ' - ' .
                         quiz_format_grade($quiz, $i * $bandwidth);
             }
-            //echo '<pre>'; var_dump($bandlabels); echo '</pre>';
             
             // get quiz histogram data
             $participant = quiz_report_grade_bands($bandwidth, $bands, $quiz->id);
-            echo '<pre>'; var_dump($participant); echo '</pre>';
             
             // get my grade in the histogram
             $mygrade = quiz_report_grade_bands($bandwidth, $bands, $quiz->id, array($USER->id));
@@ -87,11 +84,15 @@ class filter_quiz_chart extends moodle_text_filter {
             $chart_data = array();
             $participant_max = 0;
             for ($i=0; $i<count($bandlabels); $i++) {
-                $chart_data[$i]['bandlabel']   = $bandlabels[$i];
-                $chart_data[$i]['participant'] = (int) $participant[$i];
+                //$chart_data[$i]['bandlabel']   = $bandlabels[$i];
+                //$chart_data[$i]['participant'] = (int) $participant[$i];
+                $chart_data[$i] = array($bandlabels[$i] => (int) $participant[$i]);
                 
-                $participant_max = max($participant_max, $participant[$i]);
+                $participant_max = (int) max($participant_max, $participant[$i]);
             }
+            $chartData = new stdClass();
+            $chartData->bandlabels = $bandlabels;
+            $chartData->participants = $participant;
             
             // set band color
             $colors = array_fill(0, count($bandlabels), '#FF0000');
@@ -99,85 +100,68 @@ class filter_quiz_chart extends moodle_text_filter {
               $colors[$mygrade] = '#FF00FF';
             }
             
-            $chart_data = json_encode($chart_data);
-            $colors = json_encode($colors);
+            //$chart_data = json_encode($chart_data);
+            //$colors = json_encode($colors);
             $part_max = ceil($participant_max/10)*10;
             
             $lang = new stdClass();
             $lang->participants = get_string('participants');
             $lang->grade = get_string('grade');
             
+            $all_chart_data[$counter] = array('data'=>$chartData,
+                                              'colors'=>$colors,
+                                              'mygrade'=>$mygrade,
+                                              'maxVal'=>$part_max,
+                                              'lang'=>$lang,
+                                              );
+            
             $quiz_uri = new moodle_url('/mod/quiz/view.php?id=' . $quiz_cmid);
             
 $html =<<< __HTML__
 <div name="quizchart_title" style="text-align:center;"><a href="{$quiz_uri}">{$quiz->name}</a></div>
-<div id="quizchart-{$quiz_cmid}-{$counter}" style="min-width:500px;width:100%;height:400px;"></div>
-<script type="text/javascript">
-    var chartData{$quiz_cmid} = {$chart_data};
-    var colors{$quiz_cmid} = {$colors};
-    YUI().use('charts', function (Y) {
-        var myChart = new Y.Chart({
-            dataProvider: chartData{$quiz_cmid},
-            render: "#quizchart-{$quiz_cmid}-{$counter}",
-            categoryKey: 'bandlabel',
-            horizontalGridlines: {
-                styles: {
-                    line: {
-                        color: '#dad8c9',
-                    }
-                }
-            },
-            axes: {
-                participant: {
-                    keys: ['participant'],
-                    type: 'numeric',
-                    position: 'left',
-                    title: "{$lang->participants}",
-                    maximum: {$part_max},
-                    minimum: 0
-                },
-                bandlabel: {
-                    styles: {
-                        label: {
-                            rotation: -45
-                        }
-                    },
-                    title: '{$lang->grade}'
-                }
-            },
-            seriesCollection: [
-                {
-                    type: 'column',
-                    yAxis: 'participant',
-                    yKey: 'participant',
-                    styles: {
-                        marker: {
-                            fill: {
-                                color:  colors{$quiz_cmid}
-                            },
-                            width: 25
-                        }
-                    }
-                }
-            ],
-            tooltip: {
-                markerLabelFunction: function(categoryItem, valueItem, itemIndex, series, seriesIndex)
-                {
-                    var msg = document.createElement('div');
-                    msg.appendChild(document.createTextNode('{$lang->grade}: ' + categoryItem.value));
-                    msg.appendChild(document.createElement('br'));
-                    msg.appendChild(document.createTextNode('{$lang->participants}: ' + chartData{$quiz_cmid}[itemIndex].participant));
-                    return msg;
-                }
-            }
-        });
-    });
-</script>
+<svg id="quizchart-{$counter}" style="min-width:500px;width:100%;height:400px;"></svg>
 __HTML__;
             $text = str_replace($link_text, $html, $text);
-            
+
+            $counter++;
         }
+
+$all_chart_data = json_encode($all_chart_data, JSON_NUMERIC_CHECK);
+$html =<<< __HTML__
+<script type="text/javascript">
+//<![CDATA[
+    var quizChartData = {$all_chart_data};
+    //d3.select("#quizchart-{$quiz_cmid}-{$counter}");
+   
+//]]>
+</script>
+<style>
+    .axis path,
+    .axis line {
+        fill: none;
+        stroke: black;
+    }
+    .axis text {
+        font-size: 11px;
+        font-family: sans-serif;
+    }
+    
+    .x-axis-label {
+        font-size: 11px;
+        font-family: sans-serif;
+        text-anchor: middle;
+    }
+    
+    .tick line {
+      opacity: 0.2;
+    }
+    
+</style>
+__HTML__;
+            
+        $text .= $html;
         
         return $text;
+        
     }
 }
