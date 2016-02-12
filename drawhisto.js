@@ -1,8 +1,6 @@
 if (typeof(quizChartData) != 'undefined'){
-    console.log(quizChartData);  // debug
     
     for (var i=0; i<quizChartData.length; i++) {
-        console.log(quizChartData[i]);  // debug
         
         var chartData = quizChartData[i];
         var svgHeight = 400;
@@ -34,7 +32,6 @@ if (typeof(quizChartData) != 'undefined'){
           .enter()
           .append('rect')
           .attr('class', 'bar')
-          .style('fill', 'red')
           .style('stroke', 'none')
           .attr('height', function(d, i){
               return  d * (chartHeight-marginTop) / maxVal;
@@ -45,6 +42,13 @@ if (typeof(quizChartData) != 'undefined'){
           })
           .attr('y', function(d, i){
               return chartHeight - d * (chartHeight-marginTop) / maxVal;
+          })
+          .attr('fill', function(d, i){
+              if (chartData.mygrade == i) {
+                return chartData.specialcolor;
+              } else {
+                return chartData.regularcolor;
+              }
           })
           
         // plot Y axis
@@ -61,7 +65,6 @@ if (typeof(quizChartData) != 'undefined'){
                 .tickPadding(10)
           )
           
-        
         // plot X axis
         d3.select('#quizchart-' + i)
           .append('g')
@@ -80,24 +83,24 @@ if (typeof(quizChartData) != 'undefined'){
           .selectAll('text')
           .style('text-anchor', 'middle')
           .attr('transform', 'rotate(-45)')
-          .attr("dx", "-1.5em")
-          .attr("dy", "1.25em")
+          .attr('dx', '-1.5em')
+          .attr('dy', '1.25em')
           
         // X axis title
         d3.select('#quizchart-' + i)
           .append('text')
-          .attr("x", chartWidth / 2 + marginLeft)
+          .attr('x', chartWidth / 2 + marginLeft)
           .attr('y', chartHeight + 60)
-          .style("text-anchor", "middle")
+          .style('text-anchor', 'middle')
           .text(chartData.lang.grade);
         
         // Y axis title
         d3.select('#quizchart-' + i)
           .append('text')
           .attr('transform', 'rotate(-90)')
-          .attr("x", 0 - chartHeight / 2 - marginTop)
+          .attr('x', 0 - chartHeight / 2 - marginTop)
           .attr('y', 10)
-          .style("text-anchor", "middle")
+          .style('text-anchor', 'middle')
           .text(chartData.lang.participants);
     }
 }

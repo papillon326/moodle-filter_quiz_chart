@@ -6,8 +6,9 @@ global $CFG;
 require_once($CFG->dirroot . '/mod/quiz/lib.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 require_once($CFG->dirroot . '/mod/quiz/report/reportlib.php');
+require_once(__DIR__.'/lib.php');
 
-class filter_quiz_chart extends moodle_text_filter {
+class filter_quiz_chart2 extends moodle_text_filter {
     public function setup($page, $context) {
         static $jsinitialised = false;
         
@@ -15,10 +16,10 @@ class filter_quiz_chart extends moodle_text_filter {
             return true;
         }
         
-        $url = new moodle_url('/filter/quiz_chart/d3js/d3.min.js');
+        $url = new moodle_url('/filter/quiz_chart2/d3js/d3.min.js');
         $page->requires->js($url);
         
-        $url = new moodle_url('/filter/quiz_chart/debug.js');
+        $url = new moodle_url('/filter/quiz_chart2/drawhisto.js');
         $page->requires->js($url);
         
         $jsinitialised = true;
@@ -31,12 +32,12 @@ class filter_quiz_chart extends moodle_text_filter {
         $counter = 0;
         
         // shortcut
-        if (strpos($text, '[quizchart:') === false){
+        if (strpos($text, '[quizchart2:') === false){
             return $text;
         }
         
         // get placeholders
-        if (preg_match_all('/\[quizchart:([0-9]+)\]/', $text, $matches, PREG_SET_ORDER) === false) return $text;
+        if (preg_match_all('/\[quizchart2:([0-9]+)\]/', $text, $matches, PREG_SET_ORDER) === false) return $text;
 
         $all_chart_data = array();
         foreach ($matches as $match) {
@@ -47,6 +48,9 @@ class filter_quiz_chart extends moodle_text_filter {
             
             $quiz = $DB->get_record('quiz', array('id' => $cm->instance));
             if(!$quiz) continue;
+            
+            $report = new quiz_chartdata_report();
+            $report->display($quiz, $cm, $COURSE);
             
             // Pick a sensible number of bands depending on quiz maximum grade.
             $bands = $quiz->grade;
@@ -84,8 +88,6 @@ class filter_quiz_chart extends moodle_text_filter {
             $chart_data = array();
             $participant_max = 0;
             for ($i=0; $i<count($bandlabels); $i++) {
-                //$chart_data[$i]['bandlabel']   = $bandlabels[$i];
-                //$chart_data[$i]['participant'] = (int) $participant[$i];
                 $chart_data[$i] = array($bandlabels[$i] => (int) $participant[$i]);
                 
                 $participant_max = (int) max($participant_max, $participant[$i]);
@@ -94,14 +96,6 @@ class filter_quiz_chart extends moodle_text_filter {
             $chartData->bandlabels = $bandlabels;
             $chartData->participants = $participant;
             
-            // set band color
-            $colors = array_fill(0, count($bandlabels), '#FF0000');
-            if ($mygrade !== false) {
-              $colors[$mygrade] = '#FF00FF';
-            }
-            
-            //$chart_data = json_encode($chart_data);
-            //$colors = json_encode($colors);
             $part_max = ceil($participant_max/10)*10;
             
             $lang = new stdClass();
@@ -109,10 +103,11 @@ class filter_quiz_chart extends moodle_text_filter {
             $lang->grade = get_string('grade');
             
             $all_chart_data[$counter] = array('data'=>$chartData,
-                                              'colors'=>$colors,
                                               'mygrade'=>$mygrade,
                                               'maxVal'=>$part_max,
                                               'lang'=>$lang,
+                                              'regularcolor'=>'#FF0000',  // TODO: change configurable
+                                              'specialcolor'=>'#FF00FF'   // TODO: change configurable
                                               );
             
             $quiz_uri = new moodle_url('/mod/quiz/view.php?id=' . $quiz_cmid);
@@ -131,8 +126,6 @@ $html =<<< __HTML__
 <script type="text/javascript">
 //<![CDATA[
     var quizChartData = {$all_chart_data};
-    //d3.select("#quizchart-{$quiz_cmid}-{$counter}");
-   
 //]]>
 </script>
 <style>
@@ -158,7 +151,7 @@ $html =<<< __HTML__
     
 </style>
 __HTML__;
-            
+        
         $text .= $html;
         
         return $text;
