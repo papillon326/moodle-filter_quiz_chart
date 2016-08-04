@@ -9,4 +9,4 @@ $plugin->dependencies = array(
                             'quiz_overview' => ANY_VERSION,
                         );
 $plugin->maturity     = MATURITY_BETA;
-$plugin->release      = 'for moodle v2.x';
+$plugin->release      = 'for moodle v3.x';
