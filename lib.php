@@ -1,5 +1,5 @@
 <?php
-
+/*
 require_once($CFG->dirroot . '/mod/quiz/report/default.php');
 require_once($CFG->dirroot . '/mod/quiz/report/attemptsreport.php');
 require_once($CFG->dirroot . '/mod/quiz/report/attemptsreport_table.php');
@@ -229,3 +229,4 @@ class quiz_chartdata_report extends quiz_attempts_report {
     }
 
 }
+ */

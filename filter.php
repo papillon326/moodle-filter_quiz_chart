@@ -8,7 +8,7 @@ require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 require_once($CFG->dirroot . '/mod/quiz/report/reportlib.php');
 require_once(__DIR__.'/lib.php');
 
-class filter_quiz_chart2 extends moodle_text_filter {
+class filter_quiz_chart extends moodle_text_filter {
     public function setup($page, $context) {
         static $jsinitialised = false;
         
@@ -16,10 +16,10 @@ class filter_quiz_chart2 extends moodle_text_filter {
             return true;
         }
         
-        $url = new moodle_url('/filter/quiz_chart2/d3js/d3.min.js');
+        $url = new moodle_url('/filter/quiz_chart/d3js/d3.min.js');
         $page->requires->js($url);
         
-        $url = new moodle_url('/filter/quiz_chart2/drawhisto.js');
+        $url = new moodle_url('/filter/quiz_chart/drawhisto.js');
         $page->requires->js($url);
         
         $jsinitialised = true;
@@ -32,12 +32,12 @@ class filter_quiz_chart2 extends moodle_text_filter {
         $counter = 0;
         
         // shortcut
-        if (strpos($text, '[quizchart2:') === false){
+        if (strpos($text, '[quizchart:') === false){
             return $text;
         }
         
         // get placeholders
-        if (preg_match_all('/\[quizchart2:([0-9]+)\]/', $text, $matches, PREG_SET_ORDER) === false) return $text;
+        if (preg_match_all('/\[quizchart:([0-9]+)\]/', $text, $matches, PREG_SET_ORDER) === false) return $text;
 
         $all_chart_data = array();
         foreach ($matches as $match) {
@@ -49,8 +49,8 @@ class filter_quiz_chart2 extends moodle_text_filter {
             $quiz = $DB->get_record('quiz', array('id' => $cm->instance));
             if(!$quiz) continue;
             
-            $report = new quiz_chartdata_report();
-            $report->display($quiz, $cm, $COURSE);
+            //$report = new quiz_chartdata_report();
+            //$report->display($quiz, $cm, $COURSE);
             
             // Pick a sensible number of bands depending on quiz maximum grade.
             $bands = $quiz->grade;
@@ -113,8 +113,8 @@ class filter_quiz_chart2 extends moodle_text_filter {
             $quiz_uri = new moodle_url('/mod/quiz/view.php?id=' . $quiz_cmid);
             
 $html =<<< __HTML__
-<div name="quizchart_title" style="text-align:center;"><a href="{$quiz_uri}">{$quiz->name}</a></div>
-<svg id="quizchart-{$counter}" style="min-width:500px;width:100%;height:400px;"></svg>
+<div name="quizchart_title"><a href="{$quiz_uri}">{$quiz->name}</a></div>
+<svg id="quizchart-{$counter}" class="quizchart-svgarea"></svg>
 __HTML__;
             $text = str_replace($link_text, $html, $text);
 
@@ -129,6 +129,16 @@ $html =<<< __HTML__
 //]]>
 </script>
 <style>
+    div[name=quizchart_title] {
+        text-align: center;
+    }
+    
+    svg.quizchart-svgarea {
+         min-width: 500px;
+         width: 100%;
+         height: 400px;
+    }
+    
     .axis path,
     .axis line {
         fill: none;
