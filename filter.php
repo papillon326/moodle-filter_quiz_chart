@@ -81,7 +81,8 @@ class filter_quiz_chart extends moodle_text_filter {
             $participant = quiz_report_grade_bands($bandwidth, $bands, $quiz->id);
             
             // get my grade in the histogram
-            $mygrade = quiz_report_grade_bands($bandwidth, $bands, $quiz->id, array($USER->id));
+            $userjoins = new \core\dml\sql_join('', "u.id = {$USER->id}");
+            $mygrade = quiz_report_grade_bands($bandwidth, $bands, $quiz->id, $userjoins);
             $mygrade = array_search('1', $mygrade);
             
             // create chart data
